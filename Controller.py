@@ -5,6 +5,22 @@ import time
 import sys, getopt
 import RPi.GPIO as GPIO
 
+
+# Preset options.
+saveToLogFile = False
+minTempAlarm = 0.0
+maxTempAlarm = 100.0
+minHumidAlarm = 0.0
+maxHumidAlarm = 100.0
+maxErrCnt = 0
+
+# Pin asignments
+sensorPin = 14
+alarmPin = 18
+tempOutputPin = 7
+humidOutputPin = 9
+
+
 tempPID = PID()
 humidPID = PID()
 
@@ -21,7 +37,7 @@ def initialisePID():
 # Retrieve a sensor reading
 def getSensorValues():
     # Use the (modified) Adafruit DHT library
-    proc = subprocess.Popen(["./Adafruit_DHT 22 14"], stdout=subprocess.PIPE, shell=True)
+    proc = subprocess.Popen(' '.join(["./Adafruit_DHT 22",str(sensorPin)]), stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
 
     if out == "":
@@ -44,40 +60,37 @@ def logActivity(temp, pidTemp, humid, pidHumid, logToFile):
 def initAlarmOutput():
     """ Initialise an alarm output. """
     
-    GPIO.setup(18, GPIO.OUT)
-    GPIO.output(18, False)
+    GPIO.setup(alarmPin, GPIO.OUT)
+    GPIO.output(alarmPin, False)
 
 
 # Raise alarm if all gone wrong
 def raiseAlarm():
     """ If all gone wrong, set an output to raise alarm. """
-    GPIO.output(18, True)
+    GPIO.output(alarmPin, True)
 
 
 
 # Start prog from here:
 #
 
-# Preset options.
-saveToLogFile = False
-minTempAlarm = 0.0
-maxTempAlarm = 100.0
-minHumidAlarm = 0.0
-maxHumidAlarm = 100.0
-maxErrCnt = 0
 
 # Get options (just log to file or not for now)
-opts, args = getopt.getopt(sys.argv[1:],"hl", ["mint=","maxt=","minh=","maxh=","errcnt="])
+opts, args = getopt.getopt(sys.argv[1:],"hl", ["mint=","maxt=","minh=","maxh=","errcnt=","alarm-pin=","sensor-pin=","temp-pin=","humid-pin="])
 
 for opt,arg in opts:
     if opt == "-h":
-        print "-h\t\tPrint this message & exit."
-        print "-l\t\tSave PID in/output to file for diagnostics."
-        print "--mint <num>\tMinimum temperature alarm (default 0.0)"
-        print "--maxt <num>\tMaximum temperature alarm (default 100.0)"
-        print "--minh <num>\tMinimum humidity alarm (default 0.0)"
-        print "--maxh <num>\tMaximum humidity alarm (default 100.0)"
-        print "--errcnt <num>\tMaximum sensor reading error limit. 0 = off (default 0)"
+        print "-h\t\t\tPrint this message & exit"
+        print "-l\t\t\tSave PID in/output to file for diagnostics"
+        print "--mint <num>\t\tMinimum temperature alarm ( default",minTempAlarm, ")"
+        print "--maxt <num>\t\tMaximum temperature alarm ( default", maxTempAlarm,")"
+        print "--minh <num>\t\tMinimum humidity alarm ( default",minHumidAlarm,")"
+        print "--maxh <num>\t\tMaximum humidity alarm ( default",maxHumidAlarm,")"
+        print "--errcnt <num>\t\tMaximum sensor reading error limit, 0 = off ( default",maxErrCnt,")"
+        print "--alarm-pin <num>\tGPIO pin for alarm output ( default",alarmPin,")"
+        print "--sensor-pin <num>\tGPIO pin for DHT22 sensor input ( default",sensorPin,")"
+        print "--temp-pin <num>\tGPIO pin for temperature output ( default",tempOutputPin,")"
+        print "--humid-pin <num>\tGPIO pin for humidity output ( default",humidOutputPin,")"
         sys.exit()
     elif opt == "-l":
         saveToLogFile = True
@@ -91,6 +104,14 @@ for opt,arg in opts:
         maxHumidAlarm = float(arg)
     elif opt == "--errcnt":
         maxErrCnt = int(arg)
+    elif opt == "--alarm-pin":
+        alarmPin = int(arg)
+    elif opt == "--sensor-pin":
+        sensorPin = int(arg)
+    elif opt == "--temp-pin":
+        tempPin = int(arg)
+    elif opt == "--humid-pin":
+        humidPin = int(arg)
 
 
 # Now get on with the real work;
