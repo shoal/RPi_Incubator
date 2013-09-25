@@ -31,7 +31,7 @@ In general, there is a sensor input pin (set where the Python code calls the Ada
 
 General Design
 --------------
-In my design, the GPIO output pins are connected to ULN2030 darlington drivers (ie relay drivers) which drive relays.  The temperature relay turns on/off a light bulb (currently assuming room temperature is lower than incubator temperature).  The humidity control part is yet to be seriously designed, but short term it will turn on an extractor fan if the humidity is too high, and a different fan blows air over a damp sponge if it is too dry.
+In my design, the GPIO output pins are connected to ULN2030 darlington drivers (ie relay drivers) which drive relays.  The temperature relay turns on/off a light bulb (currently assuming room temperature is lower than incubator temperature).  The humidity control part is yet to be seriously designed, but short term it will turn on an extractor fan if the humidity is too high, and a different fan blows air over a damp sponge if it is too dry.  The alarm shines an LED, but an airhorn would be better :)
 
 
 TODO
@@ -41,3 +41,4 @@ Log-rotate style logging (but it's only for diagnosis & optimising PID - do we c
 
 PID tuning options (we probably dont need PID, so probably not important for us)
 
+Send an email as well as set fault output.
