@@ -159,12 +159,12 @@ while(1):
         tempPIDResult = tempPID.update(temp)
         humidPIDResult= humidPID.update(humid)
          
-        if float(tempPIDResult) >= 0.0:
+        if float(tempPIDResult) > 0.0:
             controlTemp(makeHot = True)
         else:
             controlTemp(makeHot = False)
         
-        if humidPIDResult >= 0.0:
+        if humidPIDResult > 0.0:
             controlHumid(makeWet = True)
         else:
             controlHumid(makeWet = False)
