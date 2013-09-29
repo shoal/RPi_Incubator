@@ -13,8 +13,6 @@ requiredHumid = 55.0
 saveToLogFile = False
 minTempAlarm = 0.0
 maxTempAlarm = 100.0
-minHumidAlarm = 0.0
-maxHumidAlarm = 100.0
 maxErrCnt = 0
 
 # Pin asignments
@@ -100,8 +98,6 @@ for opt,arg in opts:
         print "--reqh <num>\t\tRequired humidity ( default",requiredHumid,")"
         print "--mint <num>\t\tMinimum temperature alarm ( default",minTempAlarm, ")"
         print "--maxt <num>\t\tMaximum temperature alarm ( default", maxTempAlarm,")"
-        print "--minh <num>\t\tMinimum humidity alarm ( default",minHumidAlarm,")"
-        print "--maxh <num>\t\tMaximum humidity alarm ( default",maxHumidAlarm,")"
         print "--errcnt <num>\t\tMaximum sensor reading error limit, 0 = off ( default",maxErrCnt,")"
         print "--alarm-pin <num>\tGPIO pin for alarm output ( default",alarmOutputPin,")"
         print "--sensor-pin <num>\tGPIO pin for DHT22 sensor input ( default",sensorPin,")"
@@ -114,10 +110,6 @@ for opt,arg in opts:
         minTempAlarm = float(arg)
     elif opt == "--maxt":
         maxTempAlarm = float(arg)
-    elif opt == "--minh":
-        minHumidAlarm = float(arg)
-    elif opt == "--maxh":
-        maxHumidAlarm = float(arg)
     elif opt == "--errcnt":
         maxErrCnt = int(arg)
     elif opt == "--alarm-pin":
@@ -179,12 +171,6 @@ while(1):
             raiseAlarm()
         if temp > maxTempAlarm:
             print "Temperature too high."
-            raiseAlarm()
-        if minHumidAlarm > humid:
-            print "Humidity too low."
-            raiseAlarm()
-        if humid > maxHumidAlarm:
-            print "Humidity too high."
             raiseAlarm()
         
         sensorErrorCount = 0
