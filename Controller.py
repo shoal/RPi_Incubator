@@ -182,4 +182,4 @@ while(1):
         print "Sensor failures too often."
         raiseAlarm()
     
-    sleep(1)
+    sleep(3)
