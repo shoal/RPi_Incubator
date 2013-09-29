@@ -27,7 +27,7 @@ You can run multiple instances of the incubator software, as long as they have s
 
 General Design
 -------------
-In general, there is a sensor input pin (set where the Python code calls the Adafruit_DHT executable), a fault output (when condition exceed extremes), and temp output (to turn the temp up/down).  The outputs are all binary (on/off), although I use relays, which can be on-on.
+In general, there is a sensor input pin (or several), a fault output (when condition exceed extremes), and temp output (to turn the temp up/down).  The outputs are all binary (on/off), although I use relays, which can be on-on.
 
 In my design, the GPIO output pins are connected to ULN2030 darlington drivers (ie relay drivers) which drive relays.  The temperature relay turns on/off a light bulb (currently assuming room temperature is lower than incubator temperature).  The alarm shines an LED, but an airhorn would be better :)
 
@@ -51,4 +51,3 @@ Add humidity control
 
 Add simple egg turner
 
-Add multiple sensors.

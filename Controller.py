@@ -12,28 +12,28 @@ requiredTemp = 37.5
 saveToLogFile = False
 minTempAlarm = 0.0
 maxTempAlarm = 100.0
-maxErrCnt = 0
+maxTempDiff = 100.0
 
 # Pin asignments
-sensorPin = 14
-alarmOutputPin = 22
-tempOutputPin = 23
+sensorPins = []
+alarmOutputPin = 0
+tempOutputPin = 0
 
 tempPID = PID(1.0, 0.0, 0.0)
 
 
 # Retrieve a sensor reading
-def getSensorValues():
+def getSensorValues(sensorPin):
     # Use the (modified) Adafruit DHT library
     proc = subprocess.Popen(' '.join(["./Adafruit_DHT 22",str(sensorPin)]), stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
 
     if out == "":
-        print "No values read!"
         raise ValueError
     else:
         # Output format: TT.t,HH.h
-        return out.split(",")
+        vals = out.split(",")
+        return float(vals[0]), float(vals[1])
 
 # Save values to file to plot later.
 def logActivity(temp, pidTemp, humid, logToFile):
@@ -48,23 +48,35 @@ def logActivity(temp, pidTemp, humid, logToFile):
 def initOutputPins():
     """ Initialise outputs. """
     
-    GPIO.setup(alarmOutputPin, GPIO.OUT)
-    GPIO.output(alarmOutputPin, False)
-
-    GPIO.setup(tempOutputPin, GPIO.OUT)
-    GPIO.output(tempOutputPin, False)
+    try:
+        if alarmOutputPin != 0:
+            GPIO.setup(alarmOutputPin, GPIO.OUT)
+            GPIO.output(alarmOutputPin, False)
+        
+        if tempOutputPin != 0:
+            GPIO.setup(tempOutputPin, GPIO.OUT)
+            GPIO.output(tempOutputPin, False)
+        
+    except IOError:
+        print "Unable to configure output pins.  Are you root?"
+        exit(1)
+    except InvalidPinException:
+        print "Invalid pin selection."
+        exit(1)
 
 # Raise alarm if all gone wrong
 def raiseAlarm():
     """ If all gone wrong, set an output to raise alarm. """
-    GPIO.output(alarmOutputPin, True)
+    if alarmOutputPin != 0:
+        GPIO.output(alarmOutputPin, True)
 
 # Increase/decrease temp.
 def controlTemp(makeHot):
-    if makeHot:
-        GPIO.output(tempOutputPin, True)
-    else:
-        GPIO.output(tempOutputPin, False)
+    if tempOutputPin != 0:
+        if makeHot:
+            GPIO.output(tempOutputPin, True)
+        else:
+            GPIO.output(tempOutputPin, False)
 
 
 
@@ -73,18 +85,18 @@ def controlTemp(makeHot):
 
 
 # Get options (just log to file or not for now)
-opts, args = getopt.getopt(sys.argv[1:],"hl", ["mint=","maxt=","errcnt=","alarm-pin=","sensor-pin=","temp-pin=","reqt="])
+opts, args = getopt.getopt(sys.argv[1:],"hl", ["mint=","maxt=","alarm-pin=","sensor-pin=","temp-pin=","reqt=","maxdiff="])
 
 for opt,arg in opts:
     if opt == "-h":
         print "-h\t\t\tPrint this message & exit"
         print "-l\t\t\tSave PID in/output to file for diagnostics"
-        print "--mint <num>\t\tMinimum temperature alarm ( default",minTempAlarm, ")"
-        print "--maxt <num>\t\tMaximum temperature alarm ( default", maxTempAlarm,")"
-        print "--errcnt <num>\t\tMaximum sensor reading error limit, 0 = off ( default",maxErrCnt,")"
-        print "--alarm-pin <num>\tGPIO pin for alarm output ( default",alarmOutputPin,")"
-        print "--sensor-pin <num>\tGPIO pin for DHT22 sensor input ( default",sensorPin,")"
-        print "--temp-pin <num>\tGPIO pin for temperature output ( default",tempOutputPin,")"
+        print "--mint <num>\t\tMinimum temperature alarm ( currently",minTempAlarm, ")"
+        print "--maxt <num>\t\tMaximum temperature alarm ( currently", maxTempAlarm,")"
+        print "--maxdiff <num>\t\tMaximum difference between temperature on different sensors ( currently", maxTempDiff,")"
+        print "--alarm-pin <num>\tGPIO pin for alarm output (0 = unused, currently",alarmOutputPin,")"
+        print "--sensor-pin <num>\tGPIO pin for DHT22 sensor input (THERE MUST BE AT LEAST ONE)"
+        print "--temp-pin <num>\tGPIO pin for temperature output (0 = unused, currently",tempOutputPin,")"
         sys.exit()
     elif opt == "-l":
         saveToLogFile = True
@@ -97,60 +109,70 @@ for opt,arg in opts:
     elif opt == "--alarm-pin":
         alarmOutputPin = int(arg)
     elif opt == "--sensor-pin":
-        sensorPin = int(arg)
+        sensorPins.append(int(arg))
     elif opt == "--temp-pin":
         tempOutputPin = int(arg)
     elif opt == "--reqt":
         requiredTemp = float(arg)
+    elif opt == "--maxdiff":
+        maxTempDiff = float(arg)
+
+if not sensorPins:
+    print "No sensors specified using \"--sensor-pin\""
+    exit(1)
+
 
 # Now get on with the real work;
 tempPID.setPoint(requiredTemp)
 
 initOutputPins()
 
-sensorErrorCount = 0
-
 while(1):
     
-    # The Adafruit thing seems unreliable,
-    try:
-        sensVals = getSensorValues()
-        valueValid = True;
-    except ValueError:
-        valueValid = False;
-        sensVals = [100.0, 100.0]   # If in doubt, freeze them not cook (not that we intend to do anything)
-    
+    sensVals = []
+    valueValid = False
+    for pin in sensorPins:
+        try:
+            # The Adafruit thing seems unreliable,
+            sensVals.append(getSensorValues(pin))
+            valueValid = True;
+        except ValueError:
+            print "Unable to read from sensor",pin
+
+
     # Only do PID if we think values are ok.
     if valueValid:
-        temp = float(sensVals[0])
-        humid= float(sensVals[1])
+        #Munge all of the values together.
+
+        tempAvg = sum(float(first) for first, second in sensVals)/len(sensVals)
+        humidAvg = sum(float(second) for first, second in sensVals)/len(sensVals)
         
-        tempPIDResult = tempPID.update(temp)
-         
+        tempPIDResult = tempPID.update(tempAvg)
+        
         if float(tempPIDResult) > 0.0:
             controlTemp(makeHot = True)
         else:
             controlTemp(makeHot = False)
         
         
-        print "Temp:", temp, "( PID out:",tempPIDResult, ")  Humidity:", humid 
+        print "Temp:", tempAvg, "( PID out:",tempPIDResult, ")  Humidity:", humidAvg 
         
-        logActivity(temp, tempPIDResult, humid, saveToLogFile)
+        logActivity(tempAvg, tempPIDResult, humidAvg, saveToLogFile)
         
-        if minTempAlarm > temp:
+        if minTempAlarm > tempAvg:
             print "Temperature too low."
             raiseAlarm()
-        if temp > maxTempAlarm:
+        if tempAvg > maxTempAlarm:
             print "Temperature too high."
             raiseAlarm()
+
+        # Make sure the difference between min-max temp isnt too great.
+        tMax = max(first for first, second in sensVals)
+        tMin = min(first for first, second in sensVals)
+        if tMax - tMin > maxTempDiff:
+            print "Sensor difference too high (min:",tMin,"max:",tMax,")"
+            raiseAlarm()
         
-        sensorErrorCount = 0
-    else:
-        sensorErrorCount = sensorErrorCount + 1
-    
-    # Finally, check retry limits.
-    if maxErrCnt > 0 and sensorErrorCount >= maxErrCnt:
-        print "Sensor failures too often."
-        raiseAlarm()
-    
-    sleep(3)
+        
+        sleep(1)
+
